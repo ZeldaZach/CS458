@@ -1,192 +1,248 @@
-#include <iostream>
 #include <cmath>
+#include <string>
 #include <vector>
+#include <iostream>
+#include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <fstream>
 
-class RC6 {
+class RC6
+{
 	public:
 		RC6(std::string);
-		std::string encrypt(std::vector<unsigned long>);
-		std::string decrypt(std::vector<unsigned long>);
+		std::string encrypt(std::string);
+		std::string decrypt(std::string);
 
-		static void remove_spaces(std::string &);
-	private:
-		int left_rotate(int, unsigned int);
-		int right_rotate(int, unsigned int);
-		std::string hex2str(unsigned long);
-		void seed_key(std::string);
+	public:
+		std::vector<unsigned int> S;
 
 	private:
-		const int W = 32;
-		const int R = 20;
-		const int modulo = pow(2, W);
-		std::vector<unsigned long> Seeded_keys;
+		unsigned int rotate_left(unsigned int, unsigned int);
+		unsigned int rotate_right(unsigned int, unsigned int);
+		std::string hex2str(unsigned int);
+		void generate_keys();
+
+	private:
+		const unsigned int W = 32;
+		const unsigned int R = 20;
+		const unsigned long P = 0xB7E15163;
+		const unsigned long Q = 0x9E3779B9;
+		const unsigned long modulo = std::pow(2, W);
+		const unsigned int LEN;
+		const unsigned int C = std::ceil(static_cast<float>(LEN) / 4);
+		const std::string USER_KEY;
 };
 
-RC6::RC6(std::string user_key)
+RC6::RC6(std::string user_key) : LEN(user_key.length() / 2), USER_KEY(user_key)
 {
-	Seeded_keys.resize(2 * R + 4);
-	seed_key(user_key);
+	S.resize(2 * R + 4);
+	std::fill(S.begin(), S.end(), 0);
+
+	generate_keys();
 }
 
-std::string RC6::encrypt(std::vector<unsigned long> plaintext_blocks)
+unsigned int RC6::rotate_left(unsigned int a, unsigned int b)
 {
-	unsigned long A = plaintext_blocks.at(0);
-	unsigned long B = plaintext_blocks.at(1);
-	unsigned long C = plaintext_blocks.at(2);
-	unsigned long D = plaintext_blocks.at(3);
-
-	B = (B + Seeded_keys[0]) % modulo;
-	D = (D + Seeded_keys[1]) % modulo;
-
-	for (int i = 1; i <= R; i++)
-	{
-		unsigned long t = (left_rotate((B * (2 * B + 1)), log2(W))) % modulo;
-		unsigned long u = (left_rotate((D * (2 * D + 1)), log2(W))) % modulo;
-		A = (left_rotate((A ^ t), u) + Seeded_keys[2 * i]) % modulo;
-		C = (left_rotate((C ^ u), t) + Seeded_keys[2 * i + 1]) % modulo;
-
-		unsigned long hold = A;
-		A = B;
-		B = C;
-		C = D; 
-		D = hold;
-	}
-
-	A = (A + Seeded_keys[2 * R + 2]) % modulo;
-	C = (C + Seeded_keys[2 * R + 3]) % modulo;
-
-	std::string return_string = hex2str(A) + hex2str(B) + hex2str(C) + hex2str(D);
-	return return_string;
+	b &= 0x1f;
+	return (a << b) | (a >> (32 - b));
 }
 
-std::string RC6::decrypt(std::vector<unsigned long> )//ciphertext_blocks)
+unsigned int RC6::rotate_right(unsigned int a, unsigned int b)
 {
-	return "";
+	b &= 0x1f;
+	return (a >> b) | (a << (32 - b));
 }
 
-void RC6::seed_key(std::string user_key)
+void RC6::generate_keys()
 {
-	unsigned long P = 0xB7E15163;
-	unsigned long Q = 0x9E3779B9;
-	unsigned long C = std::ceil(32 / W);
-
-	std::vector<unsigned long> L;
+	std::vector<unsigned int> L;
 	L.resize(C);
 
-	for (int i = 0; i < static_cast<int>(C); i++)
+	for (int i = 0; i < static_cast<int>(L.size()); i++)
 	{
-    	L.at(i) = std::strtoul(user_key.substr(i * 8, 8).c_str(), nullptr, 16);
+		// Get the block
+		std::string portion = USER_KEY.substr(8 * i, 8);
+
+		// Convert to hex unsigned int
+		L.at(i) = std::strtoul(portion.c_str(), nullptr, 16);
 	}
 
-	Seeded_keys[0] = P;
-	for (int i = 1; i <= 2 * R + 3; i++)
+	S.at(0) = P;
+	for (int i = 1; i < static_cast<int>(2 * R + 4); i++)
 	{
-		Seeded_keys[i] = (Seeded_keys[i-1] + Q) % modulo;
+		S.at(i) = (S.at(i - 1) + Q) % modulo;
 	}
 
-	int A = 0, B = 0, i = 0, j = 0;
-	unsigned long v = 3 * std::max(C, static_cast<unsigned long>(2 * R + 4));
+	unsigned int A, B, i, j;
+	A = B = i = j = 0;
+	int v = 3 * std::max(C, static_cast<unsigned int>(2 * R + 4));
 
-	for (int s = 1; s <= static_cast<int>(v); s++)
+	for (int k = 1; k <= v; k++)
 	{
-		A = Seeded_keys[i] = left_rotate((Seeded_keys[i] + A + B), 3);
-		B = L[j] = left_rotate((L[j] + A + B), A + B);
+		A = S.at(i) = rotate_left((S.at(i) + A + B) % modulo, 3);
+		B = L.at(j) = rotate_left((L.at(j) + A + B) % modulo, (A + B));
 		i = (i + 1) % (2 * R + 4);
 		j = (j + 1) % C;
 	}
-}
 
-/* Source: GeeksForGeeks */
-int RC6::left_rotate(int n, unsigned int d)
-{
-   return (n << d) | (n >> (32 - d));
-}
-
-/* Source: GeeksForGeeks */
-int RC6::right_rotate(int n, unsigned int d)
-{
-   return (n >> d) | (n << (32 - d));
+	for (int i = 0; i < static_cast<int>(2 * R + 4); i++)
+	{
+		std::cout << i << ": " << S.at(i) << std::endl;
+	}
 }
 
 /* Source: StackOverflow #12851379 */
-std::string RC6::hex2str(unsigned long hex_value)
+std::string RC6::hex2str(unsigned int hex_value)
 {
 	std::stringstream ss;
 	ss << std::setfill('0') << std::setw(4) << std::hex << hex_value;
-	return ss.str();
+
+	std::string compiled = ss.str();
+
+	compiled = compiled.substr(6, 2) + " " +
+			   compiled.substr(4, 2) + " " +
+			   compiled.substr(2, 2) + " " +
+			   compiled.substr(0, 2);
+
+	return compiled;
 }
 
-/* StackOverflow #83439 */
-void RC6::remove_spaces(std::string &str)
+std::string RC6::decrypt(std::string message)
 {
-	std::string::iterator end_pos = std::remove(str.begin(), str.end(), ' ');
-	str.erase(end_pos, str.end());
-}
-
-/* Usage: ./rc6 ./input_file.txt ./output_file.txt */
-int main(int argc, const char **argv)
-{
-	if (argc != 2)
+	std::vector<std::string> partitions;
+	partitions.resize(4);
+	for (int i = 0; i <= 24; i += 8)
 	{
-		std::cerr << "Usage: ./rc6 ./input.txt ./output.txt" << std::endl;
+		std::string block = message.substr(i, 8);
+		partitions.push_back(block);
+	}
+
+	unsigned int A = std::strtoul(partitions.at(0).c_str(), nullptr, 16);
+	unsigned int B = std::strtoul(partitions.at(1).c_str(), nullptr, 16);
+	unsigned int C = std::strtoul(partitions.at(2).c_str(), nullptr, 16);
+	unsigned int D = std::strtoul(partitions.at(3).c_str(), nullptr, 16);
+
+	C -= S.at(2 * R + 3);
+	A -= S.at(2 * R + 2);
+
+	for (int i = R; i >= 1; i--)
+	{
+		unsigned int hold = D;
+		D = C;
+		C = B;
+		B = A;
+		A = hold;
+
+		unsigned int u = rotate_left((D * (2 * D + 1)) % modulo, log2(W));
+		unsigned int t = rotate_left((B * (2 * B + 1)) % modulo, log2(W));
+
+		C = rotate_right((C - S.at(2 * i + 1)) % modulo, t) ^ u;
+		A = rotate_right((A - S.at(2 * i)) % modulo, u) ^ t;
+	}
+
+	D -= S.at(1);
+	B -= S.at(0);
+
+	std::string return_string = hex2str(A) + " " + hex2str(B) + " " + hex2str(C) + " " + hex2str(D);
+	return return_string;
+}
+
+std::string RC6::encrypt(std::string message)
+{
+	std::vector<std::string> partitions;
+	partitions.resize(4);
+	for (int i = 0; i <= 24; i += 8)
+	{
+		std::string block = message.substr(i, 8);
+		partitions.push_back(block);
+	}
+
+	unsigned int A = std::strtoul(partitions.at(0).c_str(), nullptr, 16);
+	unsigned int B = std::strtoul(partitions.at(1).c_str(), nullptr, 16);
+	unsigned int C = std::strtoul(partitions.at(2).c_str(), nullptr, 16);
+	unsigned int D = std::strtoul(partitions.at(3).c_str(), nullptr, 16);
+
+	B += S.at(0);
+	D += S.at(1);
+
+	for (int i = 1; i <= static_cast<int>(R); i++)
+	{
+		unsigned int t = rotate_left((B * (2 * B + 1)) % modulo, log2(W));
+		unsigned int u = rotate_left((D * (2 * D + 1)) % modulo, log2(W));
+
+		A = rotate_left((A ^ t), u) + S.at(2 * i);
+		C = rotate_left((C ^ u), t) + S.at(2 * i + 1);
+
+		unsigned int hold = A;
+		A = B;
+		B = C;
+		C = D;
+		D = hold;
+	}
+
+	A += S.at(2 * R + 2);
+	C += S.at(2 * R + 3);
+
+	std::string return_string = hex2str(A) + " " + hex2str(B) + " " + hex2str(C) + " " + hex2str(D);
+	return return_string;
+}
+
+void remove_spaces(std::string &str)
+{
+	str.erase(std::remove_if(str.begin(), str.end(), isspace), str.end());
+}
+
+int main(int argc, char **argv)
+{
+	if (argc != 3)
+	{
+		std::cout << "Usage: ./rc6 ./input.txt ./output.txt" << std::endl;
+		return 0;
+	}
+
+	std::ifstream file_input;
+	file_input.open(argv[1]);
+	if (!file_input.is_open())
+	{
+		std::cout << "Error opening file" << std::endl;
 		return 1;
 	}
 
-	std::ifstream input_file;
-	input_file.open(argv[1]);
-
-	// Read file contents
-	std::vector<std::string> file_lines;
-	if (input_file.is_open())
+	std::vector<std::string> lines;
+	std::string line_str;
+	while (getline(file_input, line_str))
 	{
-		std::string line;
-		while (getline(input_file, line))
-		{
-			file_lines.push_back(line);
-		}
-		input_file.close();
+		lines.push_back(line_str);
+	}
+
+	std::string mode = lines.at(0);
+	std::string text = lines.at(1).substr(lines.at(1).find_first_of(":") + 1);
+	std::string key = lines.at(2).substr(lines.at(2).find_first_of(":") + 1);
+
+	remove_spaces(mode);
+	remove_spaces(text);
+	remove_spaces(key);
+
+	RC6 rc6(key);
+
+	std::string result;
+	std::string alt;
+	
+	if (mode.compare("Encryption") == 0)
+	{
+		result = rc6.encrypt(text);
+
+		RC6 rc62(key);
+		alt = rc62.decrypt(result);
 	}
 	else
 	{
-		std::cerr << "Unable to open " << argv[1] << std::endl;
-		return 1;
+		result = rc6.decrypt(text);
 	}
 
-	if (file_lines.size() != 3)
-	{
-		std::cerr << "Incorrect file format " << argv[1] << std::endl;
-		return 2;
-	}
+	std::cout << "original: " << text << std::endl;
+	std::cout << "ciphertext: " << result << std::endl;
+	std::cout << "plaintext: " << alt << std::endl;
 
-	std::string mode = file_lines.at(0);
-	std::string text = file_lines.at(1).substr(file_lines.at(1).find_first_of(":") + 1);
-	std::string user_key = file_lines.at(2).substr(file_lines.at(2).find_first_of(":") + 1);
 
-	RC6::remove_spaces(mode);
-	RC6::remove_spaces(user_key);
-	RC6::remove_spaces(text);
-
-	std::cout << mode << std::endl << user_key << std::endl << text << std::endl;
-
-	RC6 algorithm_object(user_key);
-
-	std::vector<unsigned long> blocks;
-	for (int i = 0; i < static_cast<int>(text.length()); i += 8)
-	{
-		blocks.push_back(std::stoul(text.substr(i, 8), nullptr, 16));
-	}
-
-	if (mode == "Encryption")
-	{
-		std::cout << algorithm_object.encrypt(blocks) << std::endl;
-	}
-	else
-	{
-		algorithm_object.decrypt(blocks);
-	}
-
-	return 0;
 }
