@@ -21,6 +21,8 @@ class RC6
 		unsigned int rotate_right(unsigned int, unsigned int);
 		std::string hex2str(unsigned int);
 		void generate_keys();
+		std::string little_endian(std::string);
+		std::string hex_to_string(unsigned int A, unsigned int B, unsigned int C, unsigned int D);
 
 	private:
 		const unsigned int W = 32;
@@ -41,16 +43,70 @@ RC6::RC6(std::string user_key) : LEN(user_key.length() / 2), USER_KEY(user_key)
 	generate_keys();
 }
 
+std::string RC6::little_endian(std::string str){
+  std::string endian;
+  
+  if(str.length() % 2 == 0){
+    for(std::string::reverse_iterator r_it = str.rbegin();
+	     r_it != str.rend();r_it = r_it + 2){
+      endian.push_back(*(r_it+1));
+      endian.push_back(*r_it);
+    }
+  }else{
+    str = "0" + str;
+    for(std::string::reverse_iterator r_it = str.rbegin();
+      r_it != str.rend();r_it = r_it + 2){
+      endian.push_back(*(r_it+1));
+      endian.push_back(*r_it);
+    }
+  }
+
+  return endian;
+}
+
 unsigned int RC6::rotate_left(unsigned int a, unsigned int b)
 {
+	//std::cout << "RL " << a << ", " << b << std::endl;
 	b &= 0x1f;
-	return (a << b) | (a >> (32 - b));
+
+	return ((a << b) | (a >> (W - b)));
 }
 
 unsigned int RC6::rotate_right(unsigned int a, unsigned int b)
 {
 	b &= 0x1f;
-	return (a >> b) | (a << (32 - b));
+	return ((a >> b) | (a << (W - b)));
+}
+
+std::string RC6::hex_to_string(unsigned int A, unsigned int B, unsigned int C, unsigned int D){
+
+  std::string strA, strB, strC, strD, result;
+
+  std::stringstream ss;
+  ss << std::setfill('0') << std::setw(4) <<std::hex << A;
+  strA = little_endian(ss.str());
+  ss.str("");
+  ss.clear();
+
+  ss << std::setfill('0') << std::setw(4) <<std::hex << B;
+  strB = little_endian(ss.str());
+  ss.str("");
+  ss.clear();
+  
+  ss << std::setfill('0') << std::setw(4) <<std::hex << C;
+  strC = little_endian(ss.str());
+  ss.str("");
+  ss.clear();
+
+  ss << std::setfill('0') << std::setw(4) <<std::hex << D;
+  strD = little_endian(ss.str());
+  ss.str("");
+  ss.clear();
+
+  result = strA + strB + strC + strD;
+
+  return result;
+
 }
 
 void RC6::generate_keys()
@@ -62,6 +118,7 @@ void RC6::generate_keys()
 	{
 		// Get the block
 		std::string portion = USER_KEY.substr(8 * i, 8);
+		portion = little_endian(portion);
 
 		// Convert to hex unsigned int
 		L.at(i) = std::strtoul(portion.c_str(), nullptr, 16);
@@ -79,15 +136,10 @@ void RC6::generate_keys()
 
 	for (int k = 1; k <= v; k++)
 	{
-		A = S.at(i) = rotate_left((S.at(i) + A + B) % modulo, 3);
+		A = S.at(i) = rotate_left((S.at(i) + A + B) % modulo, 3);  
 		B = L.at(j) = rotate_left((L.at(j) + A + B) % modulo, (A + B));
 		i = (i + 1) % (2 * R + 4);
 		j = (j + 1) % C;
-	}
-
-	for (int i = 0; i < static_cast<int>(2 * R + 4); i++)
-	{
-		std::cout << i << ": " << S.at(i) << std::endl;
 	}
 }
 
@@ -97,12 +149,12 @@ std::string RC6::hex2str(unsigned int hex_value)
 	std::stringstream ss;
 	ss << std::setfill('0') << std::setw(4) << std::hex << hex_value;
 
-	std::string compiled = ss.str();
+	std::string compiled = little_endian(ss.str());
 
-	compiled = compiled.substr(6, 2) + " " +
+	/*compiled = compiled.substr(6, 2) + " " +
 			   compiled.substr(4, 2) + " " +
 			   compiled.substr(2, 2) + " " +
-			   compiled.substr(0, 2);
+			   compiled.substr(0, 2);*/
 
 	return compiled;
 }
@@ -143,7 +195,7 @@ std::string RC6::decrypt(std::string message)
 	D -= S.at(1);
 	B -= S.at(0);
 
-	std::string return_string = hex2str(A) + " " + hex2str(B) + " " + hex2str(C) + " " + hex2str(D);
+	std::string return_string = hex_to_string(A, B, C, D); //hex2str(A) + " " + hex2str(B) + " " + hex2str(C) + " " + hex2str(D);
 	return return_string;
 }
 
@@ -154,7 +206,7 @@ std::string RC6::encrypt(std::string message)
 	for (int i = 0; i <= 24; i += 8)
 	{
 		std::string block = message.substr(i, 8);
-		partitions.push_back(block);
+		partitions.push_back(little_endian(block));
 	}
 
 	unsigned int A = std::strtoul(partitions.at(0).c_str(), nullptr, 16);
@@ -183,7 +235,7 @@ std::string RC6::encrypt(std::string message)
 	A += S.at(2 * R + 2);
 	C += S.at(2 * R + 3);
 
-	std::string return_string = hex2str(A) + " " + hex2str(B) + " " + hex2str(C) + " " + hex2str(D);
+	std::string return_string = hex_to_string(A, B, C, D);//hex2str(A) + " " + hex2str(B) + " " + hex2str(C) + " " + hex2str(D);
 	return return_string;
 }
 
