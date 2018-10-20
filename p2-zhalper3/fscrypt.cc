@@ -24,7 +24,9 @@ void *fs_encrypt(void *plaintext, int bufsize, char *keystr, int *resultlen)
 
 	// Make pointer to play with plaintext
 	unsigned char *pt_counter = (unsigned char *)plaintext;
-	unsigned char bf_boxes[bufsize]; // Boxes to do the math
+
+	// Boxes to do the math
+	unsigned char *bf_boxes = (unsigned char *)calloc(bufsize, sizeof(char));
 
 	// XOR plaintext block with IV
 	for (int i = 0; i < BLOCKSIZE; i++)
@@ -60,11 +62,10 @@ void *fs_decrypt(void *ciphertext, int bufsize, char *keystr, int *resultlen)
 {
 	// Zero out the memory for buffer
 	unsigned char *output = (unsigned char *)calloc(bufsize + 1, sizeof(char));
-
+	unsigned char *bf_boxes = (unsigned char *)calloc(bufsize + 1, sizeof(char));
+	unsigned char *bf_boxes_ptr = bf_boxes;
 	unsigned char *ct_counter_outer = (unsigned char *)ciphertext;
 	unsigned char *ct_counter_inner = (unsigned char *)ciphertext;
-	unsigned char bf_boxes[bufsize + 1];
-	unsigned char *bf_boxes_ptr = bf_boxes;
 
 	BF_set_key(&bf_key, BLOCKSIZE * 2, (const unsigned char *)keystr);
 
