@@ -64,7 +64,7 @@ void *fs_decrypt(void *ciphertext, int bufsize, char *keystr, int *resultlen)
 	unsigned char *ct_counter_outer = (unsigned char *)ciphertext;
 	unsigned char *ct_counter_inner = (unsigned char *)ciphertext;
 	unsigned char bf_boxes[bufsize + 1];
-	unsigned char *p_box_pointer = bf_boxes;
+	unsigned char *bf_boxes_ptr = bf_boxes;
 
 	BF_set_key(&bf_key, BLOCKSIZE * 2, (const unsigned char *)keystr);
 
@@ -90,6 +90,6 @@ void *fs_decrypt(void *ciphertext, int bufsize, char *keystr, int *resultlen)
 		bufsize -= BLOCKSIZE;
 	}
 
-	*resultlen = strlen((const char *)p_box_pointer) + 1; // Had to add 1 to fix main.cc test
-	return (void *)p_box_pointer;
+	*resultlen = strlen((const char *)bf_boxes_ptr) + 1; // Had to add 1 to fix main.cc test
+	return (void *)bf_boxes_ptr;
 }

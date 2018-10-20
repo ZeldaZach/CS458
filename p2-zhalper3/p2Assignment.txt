@@ -3,57 +3,52 @@ Instructor: Guanhua Yan
 Due date: October 20
 Two days of grace period with daily penalty of 10% (until October 22)
 
-        Use the openssl library (www.openssl.org) to write the following 
-        two functions for encryption and decryption in a file fscrypt.cc. 
-	You should use block cipher method 
-	blowfish for encryption. Blowfish uses 64-bit blocks and typically 
-	128-bit keys.
-	
-	// put the following lines in fscrypt.h
-	
-	#include "openssl/blowfish.h"
+Use the openssl library (www.openssl.org) to write the following 
+two functions for encryption and decryption in a file fscrypt.cc. 
+You should use block cipher method 
+blowfish for encryption. Blowfish uses 64-bit blocks and typically 
+128-bit keys.
 
-	// encrypt plaintext of length bufsize. Use keystr as the key.
-	const int BLOCKSIZE = 8;           // Block size for blowfish
-	void *fs_encrypt(void *plaintext, int bufsize, char *keystr, 
-			int *resultlen);
+// put the following lines in fscrypt.h
 
-	// decrypt ciphertext of length bufsize. Use keystr as the key.
-	void *fs_decrypt(void *ciphertext, int bufsize, char *keystr, 
-			int *resultlen);
-	
-	Both functions allocate the result buffer of at least the required
-	size (using new()) and return a pointer to it. Both functions 
-	also return the number of valid bytes in the result buffer in resultlen.
-	The application code is responsible for deleting the buffer.
+#include "openssl/blowfish.h"
 
-	Use CBC mode of encryption. For padding, pad with length of the pad
-	in all the padded characters.
+// encrypt plaintext of length bufsize. Use keystr as the key.
+const int BLOCKSIZE = 8;           // Block size for blowfish
+void *fs_encrypt(void *plaintext, int bufsize, char *keystr, int *resultlen);
 
-	Assume that the initialization vector contains NULL characters 
-	(all 0's).
+// decrypt ciphertext of length bufsize. Use keystr as the key.
+void *fs_decrypt(void *ciphertext, int bufsize, char *keystr, int *resultlen);
 
-	Description of blowfish functions can be found at:
-	https://www.openssl.org/docs/man1.0.2/crypto/blowfish.html
+Both functions allocate the result buffer of at least the required
+size (using new()) and return a pointer to it. Both functions 
+also return the number of valid bytes in the result buffer in resultlen.
+The application code is responsible for deleting the buffer.
 
-	Use the following functions to faciliate your work:
+Use CBC mode of encryption. For padding, pad with length of the pad in all the padded characters.
 
-	BF_set_key: use all characters of the keystr, excluding NULL 
-		    terminator.  Valid keystr is assumed to be a string.
+Assume that the initialization vector contains NULL characters (all 0's).
 
-	BF_cbc_encrypt and BF_ecb_encrypt	    
+Description of blowfish functions can be found at:
+https://www.openssl.org/docs/man1.0.2/crypto/blowfish.html
 
-	You should use BF_ecb_encrypt to implement the CBC mode	on your own.
+Use the following functions to faciliate your work:
 
-	You will need to include "openssl/blowfish.h" from the
-	openssl package) and link with the "crypto" library.
+BF_set_key: use all characters of the keystr, excluding NULL terminator.  Valid keystr is assumed to be a string.
 
-	Below is a small test code (main.cc).
+BF_cbc_encrypt and BF_ecb_encrypt	    
 
-	You can compile it with your code in fscrypt.cc using
-	gcc (or g++) main.cc fscrypt.cc -lcrypto
+You should use BF_ecb_encrypt to implement the CBC mode	on your own.
 
-        Submit your fscrypt.cc, which uses only BF_ecb_encrypt.
+You will need to include "openssl/blowfish.h" from the
+openssl package) and link with the "crypto" library.
+
+Below is a small test code (main.cc).
+
+You can compile it with your code in fscrypt.cc using
+gcc (or g++) main.cc fscrypt.cc -lcrypto
+
+Submit your fscrypt.cc, which uses only BF_ecb_encrypt.
 
 ================================================
 
