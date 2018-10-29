@@ -2,10 +2,10 @@
 #include <stdlib.h>
 
 void prompt(){
-	char buf[100];
+	char ZZbuf[100];
 
-	gets(buf);
-	printf("You entered: %s\n", buf);
+	gets(ZZbuf);
+	printf("You entered: %s\n", ZZbuf);
 
 }
 
