@@ -38,9 +38,8 @@ def get_buffer_size():
 	sed_proc = Popen(["sed", start_str, TMP_FILE], stdout=PIPE)
 
 	assem_array = sed_proc.communicate()[0].decode("utf-8")
-	assem_array = assem_array.split("\n")
 
-	offset = _get_buff_assem(assem_array[0])
+	offset = _get_buff_assem(assem_array)
 	
 	# ArrayAlloc - 8 = ArraySize
 	# ArraySize + 12 = # of A's needed to get to the RET addr
